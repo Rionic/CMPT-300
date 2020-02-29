@@ -1,0 +1,138 @@
+5. QUESTIONS
+============
+
+Q 1  What are some pros and cons of using the struct of function pointers
+     approach as we did in the MP to link different modules?  Does it
+     significantly affect performance?  Give some examples of when you would
+     and wouldn't use this approach, and why.
+
+     It makes the implementation more clear to the programmer as all of the functions are in their designated structures. It shouldn't affect performance very much, however, it is slightly slower since to call each function, one must access the structure first. I'd use this in situations where there are many functions, all part of different categories, to organize the implementation. I wouldn't use it if there are few functions and categories.
+
+Q 2  Briefly describe the synchronization constructs you needed to implement
+     this MP--i.e., how you mediated admission of threads to the scheduler
+     queue and how you made sure only the scheduled thread would run at any
+     given time.
+
+     I used semaphores to give a single thread at a time access to queue entry, exit, and execution.
+
+Q 3  Why is the dummy scheduling implementation provided potentially
+     unsafe (i.e. could result in invalid memory references)?  How does
+     your implementation avoid this problem?
+
+     The dummy implementation is unpredictable. The functions do not perform any operations directly, and this could result in an invalid memory reference because of how no queue operations are performed.
+
+Q 4  When using the FIFO or Round Robin scheduling algorithm, can
+     sched_proc() ever "miss" any threads and exit early before all threads
+     have been scheduled and run to completion?  If yes, give an example; if
+     no, explain why not.
+
+     It cannot miss any threads. The procedure runs as long as num_workers>0, and this is always true when there are threads to be executed. The variable is only decremented when a worker exits the queue.
+
+Q 5  Why are the three variables in scheduler.h declared 'extern'?  What
+     would happen if they were not declared 'extern'?  What would happen
+     if they were not declared without the 'extern' in any file?
+
+     They are declared as extern so we can use them in any file globally. If they were not extern, the code is unaffected because we have and include statement for scheduler.h at the top of sched_impl.c.
+
+Q 6  Describe the behavior of exit_error() function in scheduler.c.  Why
+     does exit_error() not use errno?
+
+     It prints the error message given the err_num. Exit_error() can detect errors that would not usually set errno. Err_num allows errno or other values to pick up errors.
+
+Q 7  Does it matter whether the call to sched_ops->wait_for_queue(queue) in
+     sched_proc() actually does anything?  How would it affect correctness
+     if it just returned right away?  How about performance?
+
+     No. Simply ensure that next_worker continues to return NULL when the queue is empty. Correctness would be affected because our function is not being of any use. It would cause spin-waiting and slow down performance.
+
+Q 8  Explain how worker_proc() is able to call the appropriate
+     implementation of wait_for_cpu() corresponding to the scheduling policy
+     selected by the user on the command line.  Start from main() and
+     briefly explain each step along the way.
+
+     Main detects the input by checking for "fifo" or "rr" and assigns the sched variable the set of functions for the given scheduling policy. THe program can then carry on with its operations knowing that it is working with the given scheduling policy.
+
+Q 9  Is it possible that a worker thread would never proceed past the call to
+     wa->ops->wait_for_cpu(&wa->info) when using one of the scheduling
+     policies implemented in this MP?
+
+     No. The nature of the program does not allow this to happen.
+
+Q 10 Explain how you would alter the program to demonstrate the "convoy"
+     effect, when a large compute bound job that never yields to another
+     thread slows down all other jobs in a FIFO scheduled system? See Page
+     402, Stallings, the paragraph starting "Another difficulty with FCFS is
+     that it tends to favor processor-bound processes over I/O bound
+     processes".  Why is it difficult to show the benefits of Round Robin
+     scheduling in this case using the current implementation in the machine
+     problem?
+
+     Round robin scheduling would normally be a good way to handle convoy functions as it gives all waiting processes equal waiting time for the CPU. In our implementation, the RR policy would not be as helpful because it still gives the convoy a large amount of time to run.
+
+Questions
+==========
+
+Question 1.
+Why do we block SIGUSR2 and SIGALRM in worker.c?  Why do we unblock SIGUSR1 and
+SIGTERM in worker.c?
+
+     We block SIGUSR2 and SIGALRM to stop the worker from acting on those signals. SIGUSR1 and SIGTERM are unblocked so they can handle the worker.
+
+Question 2.
+We use sigwait() and sigaction() in our code. Explain the difference between the
+two. (Please explain from the aspect of thread behavior rather than syntax).
+
+     Sigaction will change how a thread responds to a signal. Sigwait suspends a thread's execution until a signal in the signal set becomes pending.
+
+Question 3.
+When we use POSIX:TMR interval timer, we are using relative time. What is the
+alternative? Explain the difference between the two.
+
+     The alterantive is absolute time, which expires once the timer reaches the value specified by new_value->it_value. Relative time is set relative to the time on the timer's clock when the timer_settime function is called.
+
+Question 4.
+Look at start_worker() in worker.c, a worker thread is executing within an
+infinite loop at the end. When does a worker thread terminate?
+
+     When cancel_worker is called, the thread is killed in pthread_kill(info->thrid, SIGTERM).
+
+Question 5.
+When does the scheduler finish?  Why does it not exit when the scheduler queue
+is empty?
+
+     It finishes when all of the workers are terminated/done. It doesn't exit because more threads could come into the queue.
+
+Question 6.
+After a thread is scheduled to run, is it still in the sched_queue? When is it
+removed from the head of the queue? When is it removed from the queue completely?
+
+     Yes. It gets sent to the tail when it's suspended. It's completely removed when it's terminated.
+
+Question 7.
+We've removed all other condition variables in SMP4, and replaced them with a
+timer and signals. Why do we still use the semaphore queue_sem?
+
+     The variable acts as a counter of completed threads and keeps track of whether there are potential threads to be run, or if the process can be finished.
+
+Question 8.
+What's the purpose of the global variable "completed" in scheduler.c? Why do we
+compare "completed" with thread_count before we wait_for_queue() in
+next_worker()?
+
+     The variable allows us to easily configure the suspend_worker() function so that it does not reposition threads when they suspend. We compare it to thread_count because if it is >=, then that means we've done all of the work we need to do and we can return.
+
+Question 9.
+We only implemented Round Robin in this SMP. If we want to implement a FIFO
+scheduling algorithm and keep the modification as minimum, which function in
+scheduler.c is the one that you should modify? Briefly describe how you would
+modify this function.
+     
+     Modify suspend_worker() for our FIFO implementation. In the function, we're moving the worker to the back of the queue at execution stage, but to implement FIFO remove this code. This way the worker will stay at the head of the queue until removal by cancel_worker(). It then gets scheduled by next_worker().
+
+Question 10.
+In this implementation, the scheduler only changes threads when the time quantum
+expires.  Briefly explain how you would use an additional signal to allow the
+scheduler to change threads in the middle of a time quantum.  In what situations
+would this be useful?
+
+     I'd activate the signal whenever another process wants to be run. It would be useful when we have a very important process that must be ran immediately. This way it can kick out the current process even within the time quantum, and have itself placed on the CPU.

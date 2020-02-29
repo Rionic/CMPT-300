@@ -1,0 +1,307 @@
+Pointers in C
+-------------
+
+1) Consider the following C program.
+#include <string.h>
+int main(int argc, char *argv[])
+{
+  char *temp;
+  strcpy(temp, argv[0]);
+  return 0;
+}
+
+Why is the above code incorrect (i.e., likely to crash)?
+
+The temp variable needs to be an array of sufficient size to receive the character(s) from argv. In this example, it is a char variable, not an array, and has no memory allocated.
+
+2) Consider the following C program.
+#include <string.h>
+int main(int argc, char *argv[])
+{
+  char temp[9];
+  strcpy(temp, argv[0]);
+  return 0;
+}
+
+A buffer overflow occurs when the program name is 9 characters long
+(e.g., "12345.exe"). Why?
+
+Strcpy copies the entire string plus the null character at the end. Copying a 9-character long string actually requires an array of size 10.
+
+
+3) Consider the following C program.
+#include <string.h>
+int main(int argc, char *argv[])
+{
+  char *buffer = "Hello";
+  strcpy(buffer, "World");
+  return 0;
+}
+
+Why does this program crash?
+
+It crashes because the buffer variable needs to be an array of at least size 6 to receive the "World" string and the terminating null character.
+
+4) Consider the following C snippet.
+void myfunc()
+{
+  char b[100];
+  char *buffer = &b[0];
+  strcpy(buffer, "World");
+}
+
+Is this correct?  What's a simpler expression for &b[0]?
+
+The program works. A simpler expression for &b[0] would be just b.
+
+
+5) Consider the following C program.
+#include <stdio.h>
+int main(int argc, char* argv[])
+{
+  printf("%s %s %s\n", *argv, (*(argv+1)) + 2, *(argv+2));
+  return 0;
+}
+
+If this code is executed using the following line, what will be the output?
+> program1 -n5 abc
+
+The output will be: program1 5 abc
+
+
+6) Consider the following C program.
+#include <stdio.h>
+#include <string.h>
+char *myfunc(char **argv)
+{
+  char buffer[100];
+  strcpy(buffer, "hello");
+  return buffer;
+}
+int main(int argc, char *argv[])
+{
+  char *s = myfunc(argv);
+  printf("%s\n", s);
+}
+
+What's wrong with this?
+
+The buffer variable gets thrown away during in garbage collection since it is a local variable. It needs to be declared as a static variable so it can perserve its value when the code returns back to the main function. 
+
+Part Two: Fixing the Bugs
+-------------------------
+
+Understanding the code
+
+  1) Explain why this program uses the exclamation operator with the
+     strcmp() function.
+
+     The exclamation operator is the same as saying strcmp(...)==0. In process_steam, this operation is compares the command line arguments to each input from stdin and increments the counter each time the strings of the two are the same. The counter represents the number of strings from stdin that match the given command line argument. More generally, strcmp checks if the strings are the same.
+
+  2) Explain why the 'LENGTH' macro returns the length of an array.
+     Would it work with a pointer to a dynamically allocated array? (Hint:
+     understand sizeof).
+
+     Sizeof(s) gets the size of the entire array structure, which is 16 bytes per pair since char *word is a pointer of size 8 bytes, which forces the int counter variable to also use up 8 bytes due to padding. Sizeof(*s) deals with only the first pair since s is dereferenced. Dividing the length of the entire array by the number of pairs gets us the length. It will not work with dynamically allocated arrays.
+
+
+
+Bug hunting
+
+  3) Explain and fix the logical flow bug within the switch statement.
+     (What happens when the -h option is used?)
+     
+     Before debugging, using the -h option outputted a message reading "Invalid option -h. Use -h for help," which didn't make sense because the user did use -h. I've added a break statement to case: 'h' so that way the defualt statement does not execute and output that message.
+
+  4) Explain and fix the argument parsing error. (Why is entrycount never
+     zero?)
+
+     The program is counting the executable file name as one of the inputs when it shouldn't be. An easy fix to this is incrementing argv before the while loop begins in the main function. Entrycount is never zero because the ./main counts as an entry, which must always be typed in order to run the program.
+
+  5) Fix print_result() to print results correctly and in the same order
+     as the words were specified on the command line.  Explain your solution.
+
+     We don't need -> since we are accessing array elements so a simple . will do. I added an i counter to iterate through each element in the structure.
+
+SMP1: Simple Shell
+==================
+
+INSTRUCTIONS
+============
+
+In this MP, you will explore and extend a simple Unix shell interpreter.
+In doing so, you will learn the basics of system calls for creating and
+managing processes.
+
+
+STEP 1:  Compile the shell
+==========================
+
+    chmod +x b.sh
+    make
+    make test   # Use in Step 5 to test your changes to the MP
+    ./shell
+
+
+STEP 2:  Try using the shell
+============================
+
+  Note: You need to specify the absolute paths of commands.
+
+  Some commands to try:
+    /bin/ls
+    /bin/ls ..
+    cd /
+    /bin/pwd
+    /bin/bash
+    exit
+    ./shell     (Note: You need to be in the smp1 directory.)
+    ./shell&    (Note: You need to be in the smp1 directory.)
+    ./b.sh      (Note: You need to be in the smp1 directory.)
+    /bin/kill -s KILL nnnn      (Where nnnn is a process ID.)
+
+  "./" means the current directory
+
+
+STEP 3:  Study the implementation of the shell
+==============================================
+
+  In preparation for the questions in Step 4, please explore the source code
+  for the shell contained in 'shell.c'.  You needn't understand every detail
+  of the implementation, but try to familiarize yourself with the structure
+  of the code, what it's doing, and the various library functions involved.
+  Please use the 'man' command to browse the Unix manual pages describing
+  functions with which you are unfamiliar.
+
+
+STEP 4:  Questions
+==================
+
+  1. Why is it necessary to implement a change directory 'cd' command in
+     the shell?  Could it be implemented by an external program instead?
+
+     We need a cd command to change directories in the shell, otherwise we'd only be able to perform operations in the current directory. By including a .h file it could be implemented with an external program.
+
+  2. Explain how our sample shell implements the change directory command.
+
+     It checks if the input matches "cd" and then executes the chdir() function. This function changes the directory, and returns 0 on success and -1 on failure. If it fails, an error message is outputted, else, it succeeds and continues.
+
+  3. What would happen if this program did not use the fork function, but
+     just used execv directly?  (Try it!)
+
+     Try temporarily changing the code 'pid_from_fork = fork();'
+     to 'pid_from_fork = 0;'
+
+     Fork creates a child process while the parent process is still running, whereas execv replaces the parent process with the child process. Using execv only runs the first command and the current process will be overwritten.
+
+  4. Explain what the return value of fork() means and how this program
+     uses it.
+
+     A negative value means it failed. The program uses the continue statement to search for the next command if it detects this. Zero means the it returned to the child process it has created. The program calls the imthechild function for this. A positive value means it returned to the parent and the return value holds the PID of the child process that has been made. The program calls the imtheparent function for this.
+
+  5. What would happen if fork() were called prior to chdir(), and chdir()
+     invoked within the forked child process?  (Try it!)
+
+     Try temporarily changing the code for 'cd' to use fork:
+
+     if (fork() == 0) {
+         if (chdir(exec_argv[1]))
+             /* Error: change directory failed */
+             fprintf(stderr, "cd: failed to chdir %s\n", exec_argv[1]);
+         exit(EXIT_SUCCESS);
+     }
+
+     The cd command does not work because fork() takes the cd argument and leaves chdir with no argument to take.
+
+  6. Can you run multiple versions of ./b.sh in the background?
+     What happens to their output?
+
+     Yes. A countdown from 10 occurs for each ./b.sh and running multiple ./b.sh initiates multiple countdowns.
+     
+  7. Can you execute a second instance of our shell from within our shell
+     program (use './shell')?  Which shell receives your input?
+
+     Yes. Judging from the PID, the subshell receives the input.
+
+  8. What happens if you type CTRL-C while the countdown script ./b.sh is
+     running?  What if ./b.sh is running in the background?
+
+     During the countdown, CTRL+C ends the entire shell instance. If ./b.sh is running in the background, CTRL+C still exits the shell instance. 
+
+  9. Can a shell kill itself?  Can a shell within a shell kill the parent
+     shell?
+
+     ./shell
+     ./shell
+     /bin/kill -s KILL NNN      (Where NNN is the the parent's PID.)
+
+     A shell can kill itself. A shell within a shell can kill the parent, thus, also killing itself.
+
+  10. What happens to background processes when you exit from the shell?
+      Do they continue to run?  Can you see them with the 'ps' command?
+
+      ./shell
+      ./b.sh&
+      exit
+      ps
+
+      The background process continues to run even after typing the exit command. I can see the background process when using the ps command.
+
+STEP 5:  Modify the MP
+======================
+
+  Please make the following modifications to the given file shell.c.  As in
+  SMP0, we have included some built-in test cases, which are described along
+  with the feature requests below.
+
+  In addition to running the tests as listed individually, you can run
+  "make test" to attempt all tests on your modified code.
+
+
+  1. Modify this MP so that you can use 'ls' instead of '/bin/ls'
+     (i.e. the shell searches the path for the command to execute.)
+
+     Test: ./shell -test path
+
+  2. Modify this MP so that the command prompt includes a counter that
+     increments for each command executed (starting with 1).  Your
+     program should use the following prompt format:
+       "Shell(pid=%1)%2> "  %1=process pid %2=counter
+     (You will need to change this into a correct printf format)
+     Do not increment the counter if no command is supplied to execute.
+
+     Test: ./shell -test counter
+
+  3. Modify this MP so that '!NN' re-executes the n'th command entered.
+     You can assume that NN will only be tested with values 1 through 9,
+     no more than 9 values will be entered.
+
+     Shell(...)1> ls
+     Shell(...)2> !1     # re-executes ls
+     Shell(...)3> !2     # re-executes ls
+     Shell(...)4> !4     # prints "Not valid" to stderr
+
+     Test: ./shell -test rerun
+
+  4. Modify the MP so that it uses waitpid instead of wait.
+
+  5. Create a new builtin command 'sub' that forks the program to create
+     a new subshell.  The parent shell should run the imtheparent()
+     function just as if we were running an external command (like 'ls').
+
+     Ruija's Hint: For p2 q5, you can just call fork(), update relevant information and execute nothing. Because fork() creates a new copy of your current process, the child process will still stay in the while loop.
+
+     ./shell
+     Shell(.n1..)1> sub
+     Shell(.n2..)1> exit  # Exits sub shell
+     Shell(.n1..)1> exit  # Exits back to 'real' shell
+
+  6. Create a new global variable to prevent a subshell from invoking
+     a subshell invoking a subshell (i.e., more than 3 levels deep):
+
+     ./shell
+     Shell(.n1..)1> sub
+     Shell(.n2..)1> sub
+     Shell(.n3..)1> sub   # prints "Too deep!" to stderr
+
+     Test: ./shell -test sub

@@ -1,0 +1,16 @@
+a.out
+b.sh
+custom.c
+lol.txt
+Makefile
+out.txt
+README.txt
+shell
+shell.c
+shell.o
+smp1_tests.c
+smp1_tests.h
+smp1_tests.o
+testrunner.c
+testrunner.h
+testrunner.o

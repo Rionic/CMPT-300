@@ -1,0 +1,3 @@
+Looking for a single word
+Result:
+cat:0
